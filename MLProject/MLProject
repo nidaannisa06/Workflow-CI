@@ -1,0 +1,6 @@
+name: housing-price
+conda_env: conda.yaml
+entry_points:
+  main:
+    # ### PERBAIKAN ### Hapus bagian parameters
+    command: "python modelling_project.py" # <--- Pastikan tidak ada --data_path di sini
