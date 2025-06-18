@@ -25,7 +25,7 @@ jobs:
 
     - name: Create and activate Conda environment
       run: |
-        conda env create -f MLProject/conda.yml # Assuming you have an conda.yml
+        conda env create -f MLProject/conda.yaml # Assuming you have an conda.yml
         conda activate housing-price-prediction-env # Replace with the actual name of your environment if different
 
     - name: Install MLflow (if not in conda.yml)
