@@ -4,9 +4,13 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'MLProject/**' # Only trigger if changes are in MLProject/
   pull_request:
     branches:
       - main
+    paths:
+      - 'MLProject/**' # Only trigger if changes are in MLProject/
 
 jobs:
   build-and-train:
@@ -16,22 +20,31 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v4
 
-    - name: Setup Miniconda
-      uses: conda-incubator/setup-miniconda@v3
+    - name: Set up Miniconda and Create/Activate Environment
+      uses: conda-incubator/setup-miniconda@v3 # Using v3 as per your provided YAML
       with:
         auto-update-conda: true
-        python-version: 3.12 # Ensure this matches your project's Python version
+        python-version: 3.12
         channels: conda-forge,defaults
+        # --- Crucial Changes Below ---
+        # Use 'environment-file' to create the environment directly via the action
+        environment-file: MLProject/conda.yaml
+        # Use 'activate-environment' to ensure the environment is active for subsequent steps
+        activate-environment: housing-price-prediction-env
+        # Ensure Conda init is done for bash shells. This is often implicit with 'auto-activate-base: false'
+        # but explicitly setting a shell helps ensure proper activation context.
+        auto-activate-base: false # Keep this if you want to avoid activating the base environment
 
-    - name: Create and activate Conda environment
-      run: |
-        conda env create -f MLProject/conda.yaml # Assuming you have an conda.yml
-        conda activate housing-price-prediction-env # Replace with the actual name of your environment if different
+    # Removed the redundant "Create and activate Conda environment" step.
+    # The environment is now created and activated by the "Set up Miniconda..." step.
 
-    - name: Install MLflow (if not in conda.yml)
+    - name: Install MLflow (if not in conda.yaml)
+      # This step might be redundant if mlflow is already in conda.yaml.
+      # If it's not, keep this to install it into the active environment.
+      # No 'conda activate' needed here, as the environment is already active.
       run: |
-        conda activate housing-price-prediction-env
         pip install mlflow
+      # The shell is automatically configured by setup-miniconda
 
     - name: Start MLflow Tracking Server
       run: |
@@ -39,12 +52,22 @@ jobs:
         # Using a simple SQLite backend for local testing within the runner
         nohup mlflow server --host 127.0.0.1 --port 5000 --backend-store-uri sqlite:///mlruns.db &
         # Give the server a moment to start up
-        sleep 5 
-      shell: bash # Ensure bash shell is used for `nohup` and `&`
+        sleep 5
+      shell: bash # Ensure bash shell is used for `nohup` and `&` commands
 
     - name: Run MLflow Project
       env:
-        MLFLOW_TRACKING_URI: http://127.0.0.1:5000 # Explicitly set for the project run
+        # Keep this if your Python script is still configured to connect to 127.0.0.1:5000
+        # If you prefer file-based tracking, change this to 'file:./mlruns'
+        # AND update your Python script (modelling_project.py) to NOT call mlflow.set_tracking_uri()
+        MLFLOW_TRACKING_URI: http://127.0.0.1:5000
       run: |
-        conda activate housing-price-prediction-env
+        # No 'conda activate' needed here, as the environment is already active
         mlflow run MLProject -e main # Or adjust to your entry point if it's not 'main'
+      # The shell is automatically configured by setup-miniconda
+
+    - name: Upload MLflow artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: mlflow-run-artifacts
+        path: mlruns/
