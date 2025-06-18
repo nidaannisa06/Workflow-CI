@@ -1,4 +1,4 @@
-name: MLflow Project CI Training # Nama workflow Anda, ini akan terlihat di GitHub Actions
+name: MLflow Project CI Training
 
 on:
   push: # Workflow ini akan berjalan setiap kali ada push ke GitHub
