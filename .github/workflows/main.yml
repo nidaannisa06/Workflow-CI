@@ -56,7 +56,3 @@ jobs:
       with:
         name: mlflow-run-artifacts
         path: mlruns/
-
-
-
-# trigger to run workflow
