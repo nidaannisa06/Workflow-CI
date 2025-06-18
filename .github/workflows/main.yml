@@ -1,0 +1,47 @@
+name: MLflow Project CI Training
+
+on:
+  push: # Workflow ini akan berjalan setiap kali ada push ke GitHub
+    branches:
+      - main # <--- PENTING: GANTI DENGAN NAMA BRANCH UTAMA REPOSITORI ANDA (bisa 'main' atau 'master')
+    paths:
+      - 'MLProject/**' # Trigger jika ada perubahan di folder MLProject
+
+jobs: # Daftar tugas yang akan dijalankan oleh workflow ini
+  train_model: # Nama tugas (job) ini
+    runs-on: ubuntu-latest # Menggunakan sistem operasi Linux terbaru di GitHub Actions
+
+    steps: # Urutan langkah-langkah yang akan dijalankan dalam tugas ini
+      - name: Checkout code # Langkah 1: Mengambil kode dari repositori GitHub Anda
+        uses: actions/checkout@v4 
+
+      - name: Set up Python # Langkah 2: Mengatur lingkungan Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12' # <--- PENTING: SESUAIKAN DENGAN VERSI PYTHON ANDA (saat ini 3.12)
+
+      - name: Install dependencies (Conda environment) # Langkah 3: Menginstal lingkungan Conda
+        run: |
+          # Update Conda base environment (opsional, tapi bagus untuk CI)
+          # conda update -n base -c defaults conda --yes
+
+          # Buat dan aktifkan Conda environment dari conda.yaml
+          conda env create -f MLProject/conda.yaml # Membuat environment dari conda.yaml
+          conda activate housing-price-prediction-env # Mengaktifkan environment (nama dari conda.yaml)
+          # Catatan: mlfow run akan otomatis mengaktifkan env ini.
+
+      - name: Run MLflow Project # Langkah 4: Menjalankan MLflow Project Anda
+        run: |
+          # Pastikan Conda environment aktif untuk menjalankan mlflow run
+          source "$(conda info --base)/etc/profile.d/conda.sh" # Inisialisasi Conda
+          conda activate housing-price-prediction-env # Aktifkan environment Conda Anda
+
+          mlflow run MLProject/ # Menjalankan proyek MLflow Anda
+        env:
+          MLFLOW_TRACKING_URI: 'file:./mlruns' # <--- PENTING: MLflow akan log ke local 'mlruns' di GitHub Actions
+
+      - name: Upload MLflow artifacts # Langkah 5: Mengunggah artefak yang dihasilkan
+        uses: actions/upload-artifact@v4
+        with:
+          name: mlflow-run-artifacts # Nama artefak yang akan terlihat di GitHub Actions
+          path: mlruns/ # MLflow akan membuat folder 'mlruns' di root repo
