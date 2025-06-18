@@ -1,37 +1,50 @@
-name: MLflow Project CI Training
+name: CI/CD Pipeline for Housing Price Prediction
 
 on:
   push:
     branches:
       - main
-    paths:
-      - 'MLProject/**'
+  pull_request:
+    branches:
+      - main
 
 jobs:
-  train_model:
+  build-and-train:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+    - name: Checkout Repository
+      uses: actions/checkout@v4
 
-      - name: Set up Miniconda & create environment
-        uses: conda-incubator/setup-miniconda@v2
-        with:
-          auto-activate-base: false
-          python-version: '3.12'
-          environment-file: MLProject/conda.yaml
-          activate-environment: housing-price-prediction-env
+    - name: Setup Miniconda
+      uses: conda-incubator/setup-miniconda@v3
+      with:
+        auto-update-conda: true
+        python-version: 3.12 # Ensure this matches your project's Python version
+        channels: conda-forge,defaults
 
-      - name: Run MLflow Project
-        shell: bash -l {0}  # penting untuk mengaktifkan conda env
-        run: |
-          mlflow run MLProject/
-        env:
-          MLFLOW_TRACKING_URI: 'file:./mlruns'
+    - name: Create and activate Conda environment
+      run: |
+        conda env create -f MLProject/environment.yml # Assuming you have an environment.yml
+        conda activate housing-price-prediction-env # Replace with the actual name of your environment if different
 
-      - name: Upload MLflow artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: mlflow-run-artifacts
-          path: mlruns/
+    - name: Install MLflow (if not in environment.yml)
+      run: |
+        conda activate housing-price-prediction-env
+        pip install mlflow
+
+    - name: Start MLflow Tracking Server
+      run: |
+        # Use nohup to run in background and redirect output to prevent hanging
+        # Using a simple SQLite backend for local testing within the runner
+        nohup mlflow server --host 127.0.0.1 --port 5000 --backend-store-uri sqlite:///mlruns.db &
+        # Give the server a moment to start up
+        sleep 5 
+      shell: bash # Ensure bash shell is used for `nohup` and `&`
+
+    - name: Run MLflow Project
+      env:
+        MLFLOW_TRACKING_URI: http://127.0.0.1:5000 # Explicitly set for the project run
+      run: |
+        conda activate housing-price-prediction-env
+        mlflow run MLProject -e main # Or adjust to your entry point if it's not 'main'
