@@ -1,4 +1,3 @@
-#run it 
 name: CI/CD Pipeline for Housing Price Prediction
 
 on:
@@ -12,6 +11,7 @@ on:
       - main
     paths:
       - 'MLProject/**'
+  workflow_dispatch:
 
 jobs:
   build-and-train:
@@ -28,12 +28,12 @@ jobs:
         python-version: 3.12
         channels: conda-forge,defaults
         environment-file: MLProject/conda.yaml
-        activate-environment: housing-price-prediction-env # This activates the env for subsequent steps
+        activate-environment: housing-price-prediction-env
         auto-activate-base: false
 
-    - name: Install MLflow (if not in conda.yaml)
-      # This step is still good to ensure mlflow is installed in the activated env
-      # especially if it's not explicitly in your conda.yaml file.
+    - name: Install MLflow
+      # This step ensures mlflow is installed in the 'housing-price-prediction-env'
+      # so your script can import and use it.
       run: |
         pip install mlflow
       # The shell is automatically configured by setup-miniconda
@@ -41,15 +41,19 @@ jobs:
     - name: Start MLflow Tracking Server
       run: |
         nohup mlflow server --host 127.0.0.1 --port 5000 --backend-store-uri sqlite:///mlruns.db &
-        sleep 5
-      shell: bash
+        sleep 5 # Give the server a moment to start
+      shell: bash # Ensure bash shell is used for `nohup` and `&` commands
 
-    - name: Run MLflow Project
+    - name: Run MLflow Project Directly
       env:
+        # Keep this if your Python script is configured to connect to 127.0.0.1:5000
+        # If your script *doesn't* call mlflow.set_tracking_uri(), this env var will be used by MLflow's default behavior.
         MLFLOW_TRACKING_URI: http://127.0.0.1:5000
       run: |
-        # Use --no-conda flag because the environment is already active
-        mlflow run MLProject -e main --no-conda 
+        # Directly execute your Python script.
+        # The 'housing-price-prediction-env' is already active from the 'setup-miniconda' step,
+        # so Python and all its dependencies (including mlflow) are available.
+        python MLProject/modelling_project.py
       # The shell is automatically configured by setup-miniconda
 
     - name: Upload MLflow artifacts
