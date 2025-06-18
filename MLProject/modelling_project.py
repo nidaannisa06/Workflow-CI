@@ -111,6 +111,6 @@ def main():
     os.remove(plot_filename)
 
     print(f"Training complete. RMSE: {rmse:.2f}, MAE: {mae:.2f}, R2: {r2:.2f}")
-
+# trigger test run
 if __name__ == "__main__":
     main()
